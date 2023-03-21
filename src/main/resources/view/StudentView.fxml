@@ -16,7 +16,7 @@
 <?import javafx.scene.text.Font?>
 
 
-<AnchorPane prefHeight="504.0" prefWidth="834.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="lk.ijse.dep10.app.controller.StudentViewController">
+<AnchorPane prefHeight="575.0" prefWidth="874.0" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="lk.ijse.dep10.app.controller.StudentViewController">
    <children>
       <Separator layoutX="414.0" layoutY="21.0" orientation="VERTICAL" prefHeight="554.0" prefWidth="12.0" />
       <Button fx:id="btnNewStudent" layoutX="30.0" layoutY="29.0" mnemonicParsing="false" onAction="#btnNewStudentOnAction" style="-fx-background-color: LIGHTGREEN;" text="+ NEW STUDENT" AnchorPane.leftAnchor="40.0" AnchorPane.topAnchor="30.0">
@@ -90,13 +90,17 @@
             </HBox>
          </children>
       </VBox>
-      <TextField fx:id="txtSearch" alignment="CENTER" layoutX="478.0" layoutY="32.0" prefHeight="24.0" prefWidth="277.0" promptText="Search Student" />
-      <TableView fx:id="tblStudent" layoutX="456.0" layoutY="136.0" onKeyReleased="#tblStudentOnKeyReleased" prefHeight="475.0" prefWidth="343.0" AnchorPane.bottomAnchor="30.0" AnchorPane.topAnchor="75.0">
-        <columns>
-          <TableColumn prefWidth="118.0" text="Picture" />
-          <TableColumn prefWidth="84.0" text="ID" />
-            <TableColumn prefWidth="140.0" text="Name" />
-        </columns>
-      </TableView>
+      <VBox layoutX="455.0" layoutY="32.0" spacing="25.0" AnchorPane.bottomAnchor="20.0" AnchorPane.rightAnchor="40.0" AnchorPane.topAnchor="40.0">
+         <children>
+            <TextField fx:id="txtSearch" alignment="CENTER" prefHeight="24.0" prefWidth="343.0" promptText="Search Student" VBox.vgrow="ALWAYS" />
+            <TableView fx:id="tblStudent" onKeyReleased="#tblStudentOnKeyReleased" prefHeight="466.0" prefWidth="385.0" VBox.vgrow="ALWAYS">
+              <columns>
+                <TableColumn prefWidth="175.0" text="Picture" />
+                <TableColumn prefWidth="106.0" text="ID" />
+                  <TableColumn prefWidth="103.0" text="Name" />
+              </columns>
+            </TableView>
+         </children>
+      </VBox>
    </children>
 </AnchorPane>

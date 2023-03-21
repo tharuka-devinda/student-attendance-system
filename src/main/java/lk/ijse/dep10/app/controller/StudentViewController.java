@@ -1,22 +1,30 @@
 package lk.ijse.dep10.app.controller;
 
 import javafx.application.Platform;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.FileChooser;
 import lk.ijse.dep10.app.db.DBConnection;
 import lk.ijse.dep10.app.model.Student;
 
+import javax.imageio.ImageIO;
+import javax.sql.rowset.serial.SerialBlob;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Optional;
 
 public class StudentViewController {
 
@@ -52,9 +60,9 @@ public class StudentViewController {
 
     public void initialize() {
 
-        tblStudent.getColumns().get(0).setCellValueFactory(new PropertyValueFactory<>("id"));
-        tblStudent.getColumns().get(1).setCellValueFactory(new PropertyValueFactory<>("name"));
-        tblStudent.getColumns().get(2).setCellValueFactory(new PropertyValueFactory<>("picture"));
+        tblStudent.getColumns().get(1).setCellValueFactory(new PropertyValueFactory<>("id"));
+        tblStudent.getColumns().get(2).setCellValueFactory(new PropertyValueFactory<>("name"));
+        tblStudent.getColumns().get(0).setCellValueFactory(new PropertyValueFactory<>("picture"));
 
         loadAllStudents();
 
@@ -132,6 +140,39 @@ public class StudentViewController {
 
     @FXML
     void btnDeleteOnAction(ActionEvent event) {
+        Student selectedStudent = tblStudent.getSelectionModel().getSelectedItem();
+        Optional<ButtonType> buttonType = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure to delete student with student id " + selectedStudent.getId() + " ?", ButtonType.YES, ButtonType.NO).showAndWait();
+        if (buttonType.isPresent() && buttonType.get() == ButtonType.YES) {
+            Connection connection = DBConnection.getInstance().getConnection();
+            try {
+                connection.setAutoCommit(false);
+                PreparedStatement stmPicture = connection.prepareStatement("DELETE FROM Picture WHERE student_id = ?");
+                stmPicture.setString(1, selectedStudent.getId());
+                PreparedStatement stmStudent = connection.prepareStatement("DELETE FROM Student WHERE id = ?");
+                stmStudent.setString(1, selectedStudent.getId());
+                stmPicture.executeUpdate();
+                stmStudent.executeUpdate();
+                connection.commit();
+
+                tblStudent.getItems().remove(selectedStudent);
+                if (!tblStudent.getItems().isEmpty()) btnNewStudent.fire();
+                connection.commit();
+            } catch (Throwable e) {
+                try {
+                    connection.rollback();
+                } catch (SQLException ex) {
+                    throw new RuntimeException(ex);
+                }
+                e.printStackTrace();
+                new Alert(Alert.AlertType.ERROR, "Failed to delete the item. Try again!").show();
+            } finally {
+                try {
+                    connection.setAutoCommit(true);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
 
     }
 
@@ -146,16 +187,70 @@ public class StudentViewController {
         txtID.getStyleClass().remove("invalid");
         txtName.getStyleClass().remove("invalid");
         txtName.requestFocus();
+        generateID();
     }
 
     @FXML
     void btnSaveOnAction(ActionEvent event) {
+        if (!isDataValid()) return;
 
+        Connection connection = DBConnection.getInstance().getConnection();
+        try {
+            PreparedStatement stmStudent = connection.prepareStatement("INSERT INTO Student (id, name) VALUES (?, ?)");
+            PreparedStatement stmStudentPicture = connection.prepareStatement("INSERT INTO Picture (student_id, picture) VALUES (?, ?)");
+
+            connection.setAutoCommit(false);
+
+            stmStudent.setString(1, txtID.getText());
+            stmStudent.setString(2, txtName.getText());
+            stmStudent.executeUpdate();
+
+            Student newStudent = new Student(txtID.getText(), txtName.getText(), null);
+
+            Image image = imgPicture.getImage();
+            if (image != null) {
+                /*nJavaFX Image -> Blob */
+                BufferedImage bufferedImage = SwingFXUtils.fromFXImage(image, null);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(bufferedImage, "png", baos);
+                byte[] bytes = baos.toByteArray();
+                Blob studentPicture = new SerialBlob(bytes);
+
+                newStudent.setPicture(studentPicture);
+                stmStudentPicture.setString(1, txtID.getText());
+                stmStudentPicture.setBlob(2, studentPicture);
+                stmStudentPicture.executeUpdate();
+            }
+            connection.commit();
+            tblStudent.getItems().add(newStudent);
+            btnNewStudent.fire();
+        } catch (Throwable e) {
+            try {
+                connection.rollback();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+            new Alert(Alert.AlertType.ERROR, "Failed to saved the Student").show();
+            e.printStackTrace();
+        }
+    }
+
+    private void generateID() {
+        if (tblStudent.getItems().size() == 0) txtID.setText("DEP-10/S001");
+        else {
+            int newID = Integer.parseInt(tblStudent.getItems().get(tblStudent.getItems().size() - 1).getId().substring(8));
+            newID++;
+            txtID.setText(String.format("DEP-10/S-%03d", newID));
+        }
+    }
+
+    private boolean isDataValid() {
+        return true;
     }
 
     @FXML
     void tblStudentOnKeyReleased(KeyEvent event) {
-
+        if (event.getCode() == KeyCode.DELETE) btnDelete.fire();
     }
 
 }
