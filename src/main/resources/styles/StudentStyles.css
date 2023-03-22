@@ -61,3 +61,7 @@
 .invalid {
     -fx-border-color: RED; !important;
 }
+
+.table {
+    -fx-text-alignment: center;
+}

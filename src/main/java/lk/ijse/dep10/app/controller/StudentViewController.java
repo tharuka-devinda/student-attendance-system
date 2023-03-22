@@ -1,6 +1,7 @@
 package lk.ijse.dep10.app.controller;
 
 import javafx.application.Platform;
+import javafx.collections.ObservableList;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -19,6 +20,7 @@ import javax.sql.rowset.serial.SerialBlob;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
@@ -75,17 +77,46 @@ public class StudentViewController {
             txtName.setText(current.getName());
 
             if (current.getPicture() != null) {
-                try {
-                    InputStream is = current.getPicture().getBinaryStream();
-                    Image itemImage = new Image(is);
-                    imgPicture.setImage(itemImage);
-                    btnClear.setDisable(false);
-                } catch (SQLException e) {
-                    new Alert(Alert.AlertType.ERROR, "Failed to load the student's picture. Try again!").showAndWait();
-                    throw new RuntimeException(e);
-                }
+                Image studentImage = current.getPicture().getImage();
+                imgPicture.setImage(studentImage);
+                btnClear.setDisable(false);
             } else {
                 btnClear.fire();
+            }
+        });
+
+        txtSearch.textProperty().addListener((ov, prev, current) -> {
+            Connection connection = DBConnection.getInstance().getConnection();
+            try {
+                Statement stm = connection.createStatement();
+                String sql = "SELECT  * FROM Student WHERE Student.name LIKE '%1$s' OR Student.id LIKE '%1$s'";
+                PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM Picture WHERE Picture.student_id = ?");
+                sql = String.format(sql, "%" + current + "%");
+                ResultSet rst = stm.executeQuery(sql);
+
+                ObservableList<Student> studentList = tblStudent.getItems();
+                studentList.clear();
+                while (rst.next()) {
+                    String id = rst.getString("id");
+                    String name = rst.getString("name");
+                    Image image = new Image("/images/no-profile.png");
+//                    BufferedImage bi = SwingFXUtils.fromFXImage(image, null);
+//                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//                    ImageIO.write(bi, "png", bos);
+//                    byte[] bytes = bos.toByteArray();
+                    ImageView picture = new ImageView(image);
+
+                    preparedStatement.setString(1, id);
+                    ResultSet rstPicture = preparedStatement.executeQuery();
+
+                    if (rstPicture.next()) {
+                        picture = new ImageView(new Image(rstPicture.getBlob("picture").getBinaryStream()));
+                        studentList.add(new Student(id, name, picture));
+                    }
+                }
+            } catch (SQLException e) {
+                new Alert(Alert.AlertType.ERROR, "Failed to load student data from database. Try again!").showAndWait();
+                throw new RuntimeException(e);
             }
         });
 
@@ -102,12 +133,12 @@ public class StudentViewController {
             while (rst.next()) {
                 String id = rst.getString("id");
                 String name = rst.getString("name");
-                Blob picture = null;
+                ImageView picture = null;
 
                 stm2.setString(1, id);
                 ResultSet rstPicture = stm2.executeQuery();
                 if (rstPicture.next()) {
-                    picture = rstPicture.getBlob("picture");
+                    picture = new ImageView(new Image((rstPicture.getBlob("picture").getBinaryStream())));
                 }
                 Student student = new Student(id, name, picture);
                 tblStudent.getItems().add(student);
@@ -184,8 +215,8 @@ public class StudentViewController {
         btnSave.setDisable(false);
         txtID.clear();
         txtName.clear();
-        txtID.getStyleClass().remove("invalid");
         txtName.getStyleClass().remove("invalid");
+        imgPicture.setImage(new Image("/images/no-profile.png"));
         txtName.requestFocus();
         generateID();
     }
@@ -216,7 +247,7 @@ public class StudentViewController {
                 byte[] bytes = baos.toByteArray();
                 Blob studentPicture = new SerialBlob(bytes);
 
-                newStudent.setPicture(studentPicture);
+                newStudent.setPicture(new ImageView(new Image(studentPicture.getBinaryStream())));
                 stmStudentPicture.setString(1, txtID.getText());
                 stmStudentPicture.setBlob(2, studentPicture);
                 stmStudentPicture.executeUpdate();
@@ -240,12 +271,22 @@ public class StudentViewController {
         else {
             int newID = Integer.parseInt(tblStudent.getItems().get(tblStudent.getItems().size() - 1).getId().substring(8));
             newID++;
-            txtID.setText(String.format("DEP-10/S-%03d", newID));
+            txtID.setText(String.format("DEP-10/S%03d", newID));
         }
     }
 
     private boolean isDataValid() {
-        return true;
+        String name = txtName.getText();
+        boolean dataValid = true;
+        txtName.getStyleClass().remove("invalid");
+
+        if (!name.matches("[A-z ]+")) {
+            txtName.requestFocus();
+            txtName.selectAll();
+            txtName.getStyleClass().add("invalid");
+            dataValid = false;
+        }
+        return dataValid;
     }
 
     @FXML

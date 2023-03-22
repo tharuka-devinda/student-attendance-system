@@ -1,17 +1,19 @@
 package lk.ijse.dep10.app.model;
 
+import javafx.scene.image.ImageView;
+
 import java.io.Serializable;
 import java.sql.Blob;
 
 public class Student implements Serializable {
     private String id;
     private String name;
-    private Blob picture;
+    private ImageView picture;
 
     public Student() {
     }
 
-    public Student(String id, String name, Blob picture) {
+    public Student(String id, String name, ImageView picture) {
         this.id = id;
         this.name = name;
         this.picture = picture;
@@ -33,11 +35,11 @@ public class Student implements Serializable {
         this.name = name;
     }
 
-    public Blob getPicture() {
+    public ImageView getPicture() {
         return picture;
     }
 
-    public void setPicture(Blob picture) {
+    public void setPicture(ImageView picture) {
         this.picture = picture;
     }
 }
